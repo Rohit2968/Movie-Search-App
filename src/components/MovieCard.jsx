@@ -14,9 +14,10 @@ export function MovieCard({
 }) {
   return (
     <div className="group relative bg-gray-900/30 backdrop-blur-lg border border-gray-700/50 rounded-2xl overflow-hidden 
-                  hover:border-purple-500/50 transition-all duration-300 hover:scale-105">
+                  hover:border-purple-500/50 transition-all duration-300 hover:scale-105 max-w-full">
+
       {/* Poster Image */}
-      <div className="relative aspect-[2/3] overflow-hidden">
+      <div className="relative aspect-[2/3] overflow-hidden w-full">
         <img
           src={getImageUrl(movie.poster_path)}
           alt={movie.title}
@@ -46,28 +47,28 @@ export function MovieCard({
       </div>
 
       {/* Content */}
-      <div className="p-4">
+      <div className="p-3 sm:p-4">
         {/* Title */}
         <button
           onClick={() => onMovieClick(movie)}
           className="w-full text-left group"
         >
-          <h3 className="text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-purple-300 
+          <h3 className="text-base sm:text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-purple-300 
                        transition-colors duration-200">
             {movie.title}
           </h3>
         </button>
 
         {/* Release Date & Rating */}
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm text-gray-400">
+        <div className="flex items-center justify-between mb-3 text-xs sm:text-sm">
+          <span className="text-gray-400">
             {movie.release_date ? new Date(movie.release_date).getFullYear() : 'N/A'}
           </span>
           <div className="flex items-center space-x-1">
-            <span className="text-sm text-yellow-400 font-semibold">
+            <span className="text-yellow-400 font-semibold">
               {movie.vote_average.toFixed(1)}
             </span>
-            <span className="text-xs text-gray-500">
+            <span className="text-gray-500 text-[10px] sm:text-xs">
               ({movie.vote_count})
             </span>
           </div>
@@ -75,7 +76,7 @@ export function MovieCard({
 
         {/* User Rating */}
         <div className="mb-3">
-          <p className="text-xs text-gray-400 mb-1">Your Rating:</p>
+          <p className="text-[10px] sm:text-xs text-gray-400 mb-1">Your Rating:</p>
           <StarRating
             rating={userRating}
             onRatingChange={(rating) => onRatingChange(movie.id, rating)}
@@ -84,13 +85,13 @@ export function MovieCard({
         </div>
 
         {/* Overview */}
-        <p className="text-sm text-gray-300 line-clamp-3 mb-3">
+        <p className="text-xs sm:text-sm text-gray-300 line-clamp-3 mb-3">
           {movie.overview}
         </p>
 
         {/* Comments indicator */}
         {commentsCount > 0 && (
-          <div className="flex items-center space-x-1 text-xs text-purple-400">
+          <div className="flex items-center space-x-1 text-[10px] sm:text-xs text-purple-400">
             <MessageCircle className="w-3 h-3" />
             <span>{commentsCount} comment{commentsCount !== 1 ? 's' : ''}</span>
           </div>

@@ -12,99 +12,89 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('search');
-  
-  // Local storage hooks
+
+  // Local storage
   const [userRatings, setUserRatings] = useLocalStorage('movieRatings', []);
   const [favorites, setFavorites] = useLocalStorage('movieFavorites', []);
   const [comments, setComments] = useLocalStorage('movieComments', []);
 
-  // Load popular movies on initial load
+  // Load movies when tab = search
   useEffect(() => {
-    if (activeTab === 'search') {
-      setIsLoading(true);
-      getPopularMovies().then((popularMovies) => {
-        setMovies(popularMovies);
-        setIsLoading(false);
-      });
-    }
-  }, [activeTab]);
-
-  // Filter movies based on active tab
-  useEffect(() => {
-    if (activeTab === 'favorites') {
-      const favoriteMovieIds = favorites.map(f => f.movieId);
-      const favoriteMovies = movies.length > 0 
-        ? movies.filter(movie => favoriteMovieIds.includes(movie.id))
-        : [];
-      
-      // If no movies loaded yet, load popular movies first
-      if (movies.length === 0 && favorites.length > 0) {
-        getPopularMovies().then((popularMovies) => {
-          const favoriteMoviesFromPopular = popularMovies.filter(movie => 
-            favoriteMovieIds.includes(movie.id)
-          );
-          setMovies(favoriteMoviesFromPopular);
-        });
-      }
-    } else if (activeTab === 'rated') {
-      const ratedMovieIds = userRatings.map(r => r.movieId);
-      const ratedMovies = movies.length > 0 
-        ? movies.filter(movie => ratedMovieIds.includes(movie.id))
-        : [];
-      
-      // If no movies loaded yet, load popular movies first
-      if (movies.length === 0 && userRatings.length > 0) {
-        getPopularMovies().then((popularMovies) => {
-          const ratedMoviesFromPopular = popularMovies.filter(movie => 
-            ratedMovieIds.includes(movie.id)
-          );
-          setMovies(ratedMoviesFromPopular);
-        });
-      }
-    }
-  }, [activeTab, favorites, userRatings]);
-
-  const handleSearch = useCallback(async (query) => {
     if (activeTab !== 'search') return;
-    
+
     setIsLoading(true);
-    try {
-      const results = query.trim() ? await searchMovies(query) : await getPopularMovies();
-      setMovies(results);
-    } finally {
-      setIsLoading(false);
-    }
+    getPopularMovies()
+      .then((data) => setMovies(data))
+      .finally(() => setIsLoading(false));
   }, [activeTab]);
 
+  // Search handler
+  const handleSearch = useCallback(
+    async (query) => {
+      if (activeTab !== 'search') return;
+
+      setIsLoading(true);
+      try {
+        const results = query.trim()
+          ? await searchMovies(query)
+          : await getPopularMovies();
+
+        setMovies(results);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [activeTab]
+  );
+
+  // When user opens movie modal
   const handleMovieClick = (movie) => {
     setSelectedMovie(movie);
     setIsModalOpen(true);
+
+    // Disable background scroll on mobile
+    document.body.style.overflow = 'hidden';
   };
 
+  // Close modal
+  const closeModal = () => {
+    setIsModalOpen(false);
+    document.body.style.overflow = 'auto';
+  };
+
+  // Rating handler
   const handleRatingChange = (movieId, rating) => {
-    setUserRatings(prev => {
-      const existingRatingIndex = prev.findIndex(r => r.movieId === movieId);
-      if (existingRatingIndex >= 0) {
+    setUserRatings((prev) => {
+      const index = prev.findIndex((r) => r.movieId === movieId);
+
+      const newRating = {
+        movieId,
+        rating,
+        timestamp: Date.now()
+      };
+
+      if (index >= 0) {
         const updated = [...prev];
-        updated[existingRatingIndex] = { movieId, rating, timestamp: Date.now() };
+        updated[index] = newRating;
         return updated;
-      } else {
-        return [...prev, { movieId, rating, timestamp: Date.now() }];
       }
+
+      return [...prev, newRating];
     });
   };
 
+  // Favorite toggle
   const handleToggleFavorite = (movieId) => {
-    setFavorites(prev => {
-      const existingIndex = prev.findIndex(f => f.movieId === movieId);
-      if (existingIndex >= 0) {
-        return prev.filter(f => f.movieId !== movieId);
-      } else {
-        return [...prev, { movieId, timestamp: Date.now() }];
+    setFavorites((prev) => {
+      const exists = prev.some((f) => f.movieId === movieId);
+      if (exists) {
+        return prev.filter((f) => f.movieId !== movieId);
       }
+      return [...prev, { movieId, timestamp: Date.now() }];
     });
   };
 
+  // Add comment
   const handleAddComment = (movieId, text) => {
     const newComment = {
       id: Date.now().toString(),
@@ -113,43 +103,46 @@ function App() {
       timestamp: Date.now(),
       author: 'You'
     };
-    setComments(prev => [newComment, ...prev]);
+
+    setComments((prev) => [newComment, ...prev]);
   };
 
+  // Delete comment
   const handleDeleteComment = (commentId) => {
-    setComments(prev => prev.filter(c => c.id !== commentId));
+    setComments((prev) => prev.filter((c) => c.id !== commentId));
   };
 
+  // Movies depending on tab
   const getFilteredMovies = () => {
-    const allMovies = movies;
-    
-    switch (activeTab) {
-      case 'favorites':
-        return allMovies.filter(movie => 
-          favorites.some(f => f.movieId === movie.id)
-        );
-      case 'rated':
-        return allMovies.filter(movie => 
-          userRatings.some(r => r.movieId === movie.id)
-        );
-      default:
-        return allMovies;
+    if (activeTab === 'favorites') {
+      return movies.filter((m) => favorites.some((f) => f.movieId === m.id));
     }
+
+    if (activeTab === 'rated') {
+      return movies.filter((m) => userRatings.some((r) => r.movieId === m.id));
+    }
+
+    return movies;
   };
 
-  const selectedMovieRating = selectedMovie 
-    ? userRatings.find(r => r.movieId === selectedMovie.id)?.rating || 0
-    : 0;
+  const selectedMovieRating =
+    selectedMovie?.id &&
+    userRatings.find((r) => r.movieId === selectedMovie.id)?.rating
+      ? userRatings.find((r) => r.movieId === selectedMovie.id).rating
+      : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
-      {/* Background Effects */}
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] 
-                    from-purple-900/20 via-gray-900 to-gray-900 pointer-events-none" />
-      <div className="fixed inset-0 bg-[url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%239C92AC%22 fill-opacity=%220.02%22%3E%3Ccircle cx=%2230%22 cy=%2230%22 r=%221%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] pointer-events-none" />
       
+      {/* Background patterns */}
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] 
+                      from-purple-900/20 via-gray-900 to-gray-900 pointer-events-none" />
+
+      <div className="fixed inset-0 bg-[url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%239C92AC%22 fill-opacity=%220.02%22%3E%3Ccircle cx=%2230%22 cy=%2230%22 r=%221%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] 
+                      pointer-events-none" />
+
       <div className="relative z-10">
-        <Header 
+        <Header
           activeTab={activeTab}
           onTabChange={setActiveTab}
           favoritesCount={favorites.length}
@@ -157,12 +150,15 @@ function App() {
         />
 
         <main className="container mx-auto px-4 py-8">
+          
+          {/* SEARCH TAB */}
           {activeTab === 'search' && (
             <div className="mb-8">
               <SearchBar onSearch={handleSearch} isLoading={isLoading} />
             </div>
           )}
 
+          {/* FAVORITES HEADER */}
           {activeTab === 'favorites' && (
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-white mb-2">Your Favorites</h2>
@@ -170,6 +166,7 @@ function App() {
             </div>
           )}
 
+          {/* RATED HEADER */}
           {activeTab === 'rated' && (
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-white mb-2">Your Ratings</h2>
@@ -177,6 +174,7 @@ function App() {
             </div>
           )}
 
+          {/* LOADING SKELETON */}
           {isLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {Array.from({ length: 8 }).map((_, index) => (
@@ -203,12 +201,13 @@ function App() {
           )}
         </main>
 
+        {/* MOVIE MODAL */}
         <MovieModal
           movie={selectedMovie}
           isOpen={isModalOpen}
           userRating={selectedMovieRating}
           comments={comments}
-          onClose={() => setIsModalOpen(false)}
+          onClose={closeModal}
           onRatingChange={handleRatingChange}
           onAddComment={handleAddComment}
           onDeleteComment={handleDeleteComment}

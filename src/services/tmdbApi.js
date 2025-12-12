@@ -1,4 +1,4 @@
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL; 
+const BACKEND_URL = "https://backend-mna6.onrender.com"; 
 const IMAGE_BASE_URL = "https://image.tmdb.org/t/p";
 
 // Fetch wrapper for backend
